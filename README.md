@@ -2,6 +2,8 @@
 
 A modern, local video downloader powered by **yt-dlp**. Supports 1000+ websites including YouTube, Twitter/X, TikTok, Instagram, Twitch, Reddit, and many more.
 
+![FetchMeThis screenshot](src/screenshot.png)
+
 **⚠️ LEGAL DISCLAIMER**: Ensure you have the right to download content you access. FetchMeThis is a tool—users are responsible for legal compliance.
 
 ## Features
