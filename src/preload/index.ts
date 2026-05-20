@@ -50,6 +50,11 @@ const api = {
     ipcRenderer.on('download-cancelled', listener)
     return () => ipcRenderer.removeListener('download-cancelled', listener)
   },
+  onDownloadOutput: (cb: (data: any) => void) => {
+    const listener = (_e: any, data: any) => cb(data)
+    ipcRenderer.on('download-output', listener)
+    return () => ipcRenderer.removeListener('download-output', listener)
+  },
   onYtDlpInstallProgress: (cb: (msg: string) => void) => {
     const listener = (_e: any, msg: string) => cb(msg)
     ipcRenderer.on('ytdlp-install-progress', listener)

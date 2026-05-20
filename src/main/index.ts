@@ -57,6 +57,7 @@ app.whenReady().then(() => {
   downloadManager.on('complete', (data) => win.webContents.send('download-complete', data))
   downloadManager.on('error', (data) => win.webContents.send('download-error', data))
   downloadManager.on('cancelled', (data) => win.webContents.send('download-cancelled', data))
+  downloadManager.on('download-log', (data) => win.webContents.send('download-output', data))
 
   // Window controls
   ipcMain.on('window-minimize', () => win.minimize())

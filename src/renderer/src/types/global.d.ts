@@ -20,6 +20,7 @@ interface FetchMeThisAPI {
   onDownloadComplete: (cb: (data: any) => void) => () => void
   onDownloadError: (cb: (data: any) => void) => () => void
   onDownloadCancelled: (cb: (data: any) => void) => () => void
+  onDownloadOutput: (cb: (data: any) => void) => () => void
   onYtDlpInstallProgress: (cb: (msg: string) => void) => () => void
   checkFfmpeg: () => Promise<{ available: boolean; path: string }>
   installFfmpeg: () => Promise<{ success: boolean; error?: string }>

@@ -29,7 +29,7 @@ export default function LogsView({ logs, onClear }: LogsViewProps) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2 font-mono text-sm leading-6">
         {logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center text-app-muted">
             <span className="text-sm font-medium">No logs yet</span>
@@ -37,11 +37,10 @@ export default function LogsView({ logs, onClear }: LogsViewProps) {
           </div>
         ) : (
           logs.map((entry) => (
-            <div key={entry.id} className="rounded-xl border border-app-border bg-app-card p-3 text-sm text-app-text">
-              <div className="flex items-center justify-between gap-3 text-xs text-app-muted mb-1">
-                <span>{entry.timestamp}</span>
-              </div>
-              <div className="whitespace-pre-wrap">{entry.message}</div>
+            <div key={entry.id} className="flex flex-wrap gap-2 text-app-text">
+              <span className="text-xs text-app-muted min-w-[80px]">{entry.timestamp}</span>
+              {entry.source ? <span className="text-xs text-app-muted">[{entry.source}]</span> : null}
+              <span className="whitespace-pre-wrap break-words">{entry.message}</span>
             </div>
           ))
         )}

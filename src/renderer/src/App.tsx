@@ -13,6 +13,7 @@ interface LogEntry {
   id: string
   timestamp: string
   message: string
+  source?: string
 }
 
 export default function App() {
@@ -30,12 +31,13 @@ export default function App() {
 
   // Wire up download event listeners
   useEffect(() => {
-    const pushLog = (message: string) => {
+    const pushLog = (message: string, source?: string) => {
       setLogs((current) => [
         {
           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           timestamp: new Date().toLocaleTimeString(),
-          message
+          message,
+          source
         },
         ...current
       ].slice(0, 200))
@@ -86,6 +88,10 @@ export default function App() {
       pushLog(`Download ${data.id} cancelled`)
     })
 
+    const offOutput = window.api.onDownloadOutput((data: any) => {
+      pushLog(data.message, data.source)
+    })
+
     const offYtDlpProgress = window.api.onYtDlpInstallProgress((msg: string) => {
       pushLog(`yt-dlp: ${msg}`)
     })
@@ -103,6 +109,7 @@ export default function App() {
       offComplete()
       offError()
       offCancelled()
+      offOutput()
       offYtDlpProgress()
       offFfmpegProgress()
       offGalleryDlProgress()

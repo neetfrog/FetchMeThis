@@ -336,6 +336,10 @@ class DownloadManager extends EventEmitter {
     })
   }
 
+  private emitDownloadLog(id: string, source: string, message: string) {
+    this.emit('download-log', { id, source, message })
+  }
+
   // ─── Downloads ──────────────────────────────────────────────────────────────
 
   async startDownload(request: DownloadRequest): Promise<void> {
@@ -386,13 +390,34 @@ class DownloadManager extends EventEmitter {
     const active: ActiveDownload = { process: proc, aborted: false }
     this.activeDownloads.set(id, active)
 
-    proc.stdout.on('data', (chunk: Buffer) => {
+    let stdoutBuffer = ''
+    const handleStdout = (chunk: Buffer) => {
       if (active.aborted) return
-      for (const line of chunk.toString().split('\n')) {
+      stdoutBuffer += chunk.toString()
+      const lines = stdoutBuffer.split(/\r?\n/)
+      stdoutBuffer = lines.pop() || ''
+      for (const line of lines) {
+        if (!line.trim()) continue
+        this.emitDownloadLog(id, 'yt-dlp', line)
         const progress = this.parseYtDlpProgress(line)
         if (progress) this.emit('progress', { id, ...progress })
       }
-    })
+    }
+
+    let stderrBuffer = ''
+    const handleStderr = (chunk: Buffer) => {
+      if (active.aborted) return
+      stderrBuffer += chunk.toString()
+      const lines = stderrBuffer.split(/\r?\n/)
+      stderrBuffer = lines.pop() || ''
+      for (const line of lines) {
+        if (!line.trim()) continue
+        this.emitDownloadLog(id, 'yt-dlp', line)
+      }
+    }
+
+    proc.stdout.on('data', handleStdout)
+    proc.stderr.on('data', handleStderr)
 
     proc.on('error', (err) => {
       this.activeDownloads.delete(id)
@@ -422,11 +447,21 @@ class DownloadManager extends EventEmitter {
     this.activeDownloads.set(id, active)
 
     let fileCount = 0
-    const handleChunk = (chunk: Buffer) => {
+    let stdoutBuffer = ''
+    let stderrBuffer = ''
+
+    const appendOutput = (chunk: Buffer, source: string) => {
       if (active.aborted) return
-      for (const line of chunk.toString().split('\n')) {
+      const buffer = source === 'stdout' ? stdoutBuffer + chunk.toString() : stderrBuffer + chunk.toString()
+      const lines = buffer.split(/\r?\n/)
+      const remaining = lines.pop() || ''
+      if (source === 'stdout') stdoutBuffer = remaining
+      else stderrBuffer = remaining
+      for (const line of lines) {
+        if (!line.trim()) continue
+        this.emitDownloadLog(id, 'gallery-dl', line)
         if (line.includes('Downloading') || line.includes('Saving') || /\.\w{2,5}$/.test(line.trim())) {
-          fileCount++
+          fileCount += 1
           this.emit('progress', {
             id,
             percent: -1,
@@ -438,8 +473,8 @@ class DownloadManager extends EventEmitter {
       }
     }
 
-    proc.stdout.on('data', handleChunk)
-    proc.stderr.on('data', handleChunk)
+    proc.stdout.on('data', (chunk: Buffer) => appendOutput(chunk, 'stdout'))
+    proc.stderr.on('data', (chunk: Buffer) => appendOutput(chunk, 'stderr'))
 
     proc.on('error', (err) => {
       this.activeDownloads.delete(id)
