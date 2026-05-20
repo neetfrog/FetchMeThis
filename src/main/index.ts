@@ -1,8 +1,57 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, clipboard } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { downloadManager } from './downloadManager'
 import { getSettings, saveSettings, defaultSettings } from './settings'
+
+// ─── Utility Functions ──────────────────────────────────────────────────────
+
+function extractPlatform(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase()
+    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return 'YouTube'
+    if (hostname.includes('twitter.com') || hostname.includes('x.com')) return 'Twitter'
+    if (hostname.includes('tiktok.com')) return 'TikTok'
+    if (hostname.includes('instagram.com')) return 'Instagram'
+    if (hostname.includes('twitch.tv')) return 'Twitch'
+    if (hostname.includes('reddit.com')) return 'Reddit'
+    if (hostname.includes('vimeo.com')) return 'Vimeo'
+    if (hostname.includes('dailymotion.com')) return 'DailyMotion'
+    if (hostname.includes('facebook.com')) return 'Facebook'
+    if (hostname.includes('pixiv.net')) return 'Pixiv'
+    if (hostname.includes('danbooru.donmai.us')) return 'Danbooru'
+    if (hostname.includes('deviantart.com')) return 'DeviantArt'
+    // Extract base domain as fallback
+    const parts = hostname.split('.')
+    if (parts.length > 1) {
+      const main = parts[parts.length - 2]
+      return main.charAt(0).toUpperCase() + main.slice(1)
+    }
+    return 'Unknown'
+  } catch {
+    return 'Unknown'
+  }
+}
+
+function buildOrganizedPath(basePath: string, pattern: string, platform: string, uploader?: string): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const dateFolder = `${year}-${month}`
+  
+  const uploaderFolder = uploader ? uploader.replace(/[<>:"\\/|?*]/g, '_').slice(0, 50) : 'Unknown'
+
+  switch (pattern) {
+    case 'platform-date':
+      return join(basePath, platform, dateFolder)
+    case 'date-platform':
+      return join(basePath, dateFolder, platform)
+    case 'uploader-date':
+      return join(basePath, uploaderFolder, dateFolder)
+    default:
+      return basePath
+  }
+}
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -125,9 +174,27 @@ app.whenReady().then(() => {
       // Validate URL
       new URL(request.url)
       
+      // Extract platform from URL
+      const platform = extractPlatform(request.url)
+      
+      // Build output directory with auto-organize if enabled
+      let outputDir = settings.downloadPath
+      if (settings.autoOrganize && settings.organizePattern !== 'none') {
+        outputDir = buildOrganizedPath(
+          settings.downloadPath,
+          settings.organizePattern,
+          platform,
+          request.title
+        )
+      }
+      
       await downloadManager.startDownload({
         ...request,
-        outputDir: settings.downloadPath,
+        outputDir,
+        platform,
+        downloadSubtitles: settings.downloadSubtitles,
+        extractChapters: settings.extractChapters,
+        enrichMetadata: settings.enrichMetadata,
         ffmpegCustomPath: settings.ffmpegCustomPath,
         galleryDlCustomPath: settings.galleryDlCustomPath
       })
@@ -187,6 +254,14 @@ app.whenReady().then(() => {
 
   ipcMain.handle('open-folder', (_e, folderPath: string) => {
     shell.openPath(folderPath)
+  })
+
+  ipcMain.handle('reveal-file', (_e, filePath: string) => {
+    shell.showItemInFolder(filePath)
+  })
+
+  ipcMain.handle('copy-to-clipboard', (_e, text: string) => {
+    clipboard.writeText(text)
   })
 
   ipcMain.handle('choose-directory', async () => {

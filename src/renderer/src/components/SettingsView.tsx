@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Folder, Save, Settings, RotateCcw, CheckCircle2, AlertCircle, Loader2, Wrench, Download } from 'lucide-react'
 import { AppSettings, FORMAT_PRESETS } from '../types'
 import { motion } from 'framer-motion'
@@ -14,6 +14,7 @@ export default function SettingsView() {
   const [galleryDlProgress, setGalleryDlProgress] = useState('')
   const [ffmpegError, setFfmpegError] = useState('')
   const [galleryDlError, setGalleryDlError] = useState('')
+  const saveTimeoutRef = useRef<NodeJS.Timeout>()
 
   useEffect(() => {
     window.api.getSettings().then(setSettings)
@@ -24,12 +25,27 @@ export default function SettingsView() {
     window.api.checkGalleryDl().then(setGalleryDlStatus)
   }, [])
 
+  // Debounced auto-save (2 seconds after last change)
+  useEffect(() => {
+    if (!settings) return
+    
+    clearTimeout(saveTimeoutRef.current)
+    saveTimeoutRef.current = setTimeout(() => {
+      window.api.saveSettings(settings)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }, 2000)
+
+    return () => clearTimeout(saveTimeoutRef.current)
+  }, [settings])
+
   const update = (patch: Partial<AppSettings>) => {
     setSettings((s) => (s ? { ...s, ...patch } : s))
   }
 
   const handleSave = async () => {
     if (!settings) return
+    clearTimeout(saveTimeoutRef.current)
     await window.api.saveSettings(settings)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -347,6 +363,83 @@ export default function SettingsView() {
                 )}
               </div>
 
+            </div>
+          </section>
+
+          {/* Advanced Features - full width */}
+          <section>
+            <h3 className="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3">
+              Advanced Features
+            </h3>
+            <div className="bg-app-card border border-app-border rounded-xl overflow-hidden divide-y divide-app-border">
+              <ToggleRow
+                label="Download subtitles"
+                description="Automatically extract and save subtitles if available"
+                value={settings.downloadSubtitles}
+                onChange={(v) => update({ downloadSubtitles: v })}
+              />
+              <ToggleRow
+                label="Extract chapters"
+                description="Split videos by chapters and create separate files"
+                value={settings.extractChapters}
+                onChange={(v) => update({ extractChapters: v })}
+              />
+              <ToggleRow
+                label="Enrich metadata"
+                description="Auto-fetch album art, lyrics, and additional metadata"
+                value={settings.enrichMetadata}
+                onChange={(v) => update({ enrichMetadata: v })}
+              />
+              <ToggleRow
+                label="Check for duplicates"
+                description="Warn when downloading a file you've already downloaded"
+                value={settings.checkDuplicates}
+                onChange={(v) => update({ checkDuplicates: v })}
+              />
+            </div>
+          </section>
+
+          {/* Auto-organize - full width */}
+          <section>
+            <h3 className="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3">
+              Organization
+            </h3>
+            <div className="bg-app-card border border-app-border rounded-xl p-4 space-y-3">
+              <ToggleRow
+                label="Auto-organize downloads"
+                description="Sort downloads into Platform/Date folders"
+                value={settings.autoOrganize}
+                onChange={(v) => update({ autoOrganize: v })}
+              />
+              {settings.autoOrganize && (
+                <div>
+                  <label className="block text-xs font-semibold text-app-muted uppercase tracking-wider mb-2">
+                    Folder structure
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      { value: 'platform-date' as const, label: 'Platform → Date', desc: 'YouTube/2026-05/video.mp4' },
+                      { value: 'date-platform' as const, label: 'Date → Platform', desc: '2026-05/YouTube/video.mp4' },
+                      { value: 'uploader-date' as const, label: 'Uploader → Date', desc: 'Creator/2026-05/video.mp4' }
+                    ].map(({ value, label, desc }) => (
+                      <label key={value} className="flex items-center gap-2 cursor-pointer hover:bg-white/2 -mx-2 px-2 py-1.5 rounded transition-colors">
+                        <input
+                          type="radio"
+                          name="organizePattern"
+                          value={value}
+                          checked={settings.organizePattern === value}
+                          onChange={(e) => update({ organizePattern: e.target.value as typeof value })}
+                          className="w-3.5 h-3.5"
+                        />
+                        <div>
+                          <span className="text-xs font-medium text-app-text">{label}</span>
+                          <p className="text-[10px] text-app-muted mt-0.5 font-mono">{desc}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         </div>

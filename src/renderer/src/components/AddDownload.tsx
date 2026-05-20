@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Link, Loader2, Search, Download, ChevronDown, X, AlertCircle, Music, Film, Image } from 'lucide-react'
+import { Link, Loader2, Search, Download, ChevronDown, X, AlertCircle, Music, Film, Image, List } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { VideoInfo, FORMAT_PRESETS, AUDIO_FORMAT_PRESETS, DownloadMode } from '../types'
 import { useDownloadStore } from '../stores/useDownloadStore'
@@ -17,6 +17,44 @@ function formatDuration(seconds?: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+function isPlaylistUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    const pathname = urlObj.pathname.toLowerCase()
+    const search = urlObj.search.toLowerCase()
+    
+    // YouTube playlist
+    if (hostname.includes('youtube.com') && search.includes('list=')) return true
+    if (hostname.includes('youtu.be') && search.includes('list=')) return true
+    
+    // TikTok playlist/collection
+    if (hostname.includes('tiktok.com') && (pathname.includes('/collection/') || pathname.includes('@'))) return true
+    
+    // Twitter/X thread/space
+    if ((hostname.includes('twitter.com') || hostname.includes('x.com')) && pathname.includes('/i/spaces/')) return true
+    
+    // Instagram tagged posts (starts with @)
+    if (hostname.includes('instagram.com') && pathname.startsWith('/@')) return true
+    
+    // Twitch channel/playlist
+    if (hostname.includes('twitch.tv') && (pathname.includes('/collections/') || pathname.includes('/videos'))) return true
+    
+    // Reddit subreddit
+    if (hostname.includes('reddit.com') && pathname.includes('/r/')) return true
+    
+    // Vimeo album
+    if (hostname.includes('vimeo.com') && pathname.includes('/album/')) return true
+    
+    // Pixiv series
+    if (hostname.includes('pixiv.net') && pathname.includes('/user/')) return true
+    
+    return false
+  } catch {
+    return false
+  }
+}
+
 const MODE_TABS: { mode: DownloadMode; label: string; icon: any }[] = [
   { mode: 'video', label: 'Video', icon: Film },
   { mode: 'audio', label: 'Audio', icon: Music },
@@ -32,8 +70,11 @@ export default function AddDownload() {
   const [selectedFormat, setSelectedFormat] = useState(FORMAT_PRESETS[0])
   const [selectedAudioFormat, setSelectedAudioFormat] = useState(AUDIO_FORMAT_PRESETS[0])
   const [formatOpen, setFormatOpen] = useState(false)
+  const [allowPlaylist, setAllowPlaylist] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { addDownload } = useDownloadStore()
+  const { addDownload, isDuplicate } = useDownloadStore()
+  const isDuplicate_ = isDuplicate(url.trim())
+  const isPlaylist = isPlaylistUrl(url.trim())
 
   const isValidUrl = (u: string) => {
     try { new URL(u); return true } catch { return false }
@@ -68,6 +109,7 @@ export default function AddDownload() {
       formatLabel: mode === 'audio' ? `Audio · ${selectedAudioFormat.label}` : selectedFormat.label,
       audioOnly: mode === 'audio',
       audioFormat: mode === 'audio' ? selectedAudioFormat.value : undefined,
+      isPlaylist: isPlaylist && allowPlaylist,
       addedAt: Date.now(),
       extractor: videoInfo?.extractor_key
     })
@@ -78,11 +120,13 @@ export default function AddDownload() {
       title,
       thumbnail: videoInfo?.thumbnail,
       audioOnly: mode === 'audio',
-      audioFormat: mode === 'audio' ? selectedAudioFormat.value : undefined
+      audioFormat: mode === 'audio' ? selectedAudioFormat.value : undefined,
+      allowPlaylist: isPlaylist && allowPlaylist
     })
     setUrl('')
     setVideoInfo(null)
     setFetchState('idle')
+    setAllowPlaylist(false)
   }
 
   const handleGalleryDownload = async () => {
@@ -122,6 +166,7 @@ export default function AddDownload() {
       formatLabel: mode === 'audio' ? `Audio · ${selectedAudioFormat.label}` : selectedFormat.label,
       audioOnly: mode === 'audio',
       audioFormat: mode === 'audio' ? selectedAudioFormat.value : undefined,
+      isPlaylist: isPlaylist && allowPlaylist,
       addedAt: Date.now()
     })
     await window.api.startDownload({
@@ -130,9 +175,11 @@ export default function AddDownload() {
       format: selectedFormat.value,
       title: url.trim(),
       audioOnly: mode === 'audio',
-      audioFormat: mode === 'audio' ? selectedAudioFormat.value : undefined
+      audioFormat: mode === 'audio' ? selectedAudioFormat.value : undefined,
+      allowPlaylist: isPlaylist && allowPlaylist
     })
     setUrl('')
+    setAllowPlaylist(false)
   }
 
   const handleReset = () => {
@@ -333,6 +380,38 @@ export default function AddDownload() {
                 {mode === 'audio' ? `Save ${selectedAudioFormat.label}` : 'Download'}
               </button>
             </div>
+            {isPlaylist && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mt-2 flex items-center gap-2.5 bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5"
+              >
+                <input
+                  type="checkbox"
+                  checked={allowPlaylist}
+                  onChange={(e) => setAllowPlaylist(e.target.checked)}
+                  className="w-3.5 h-3.5 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <p className="text-xs text-blue-400 font-medium flex items-center gap-1.5">
+                    <List size={12} />
+                    Download entire playlist ({videoInfo.length || '?'} items)
+                  </p>
+                </div>
+              </motion.div>
+            )}
+            {isDuplicate_ && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mt-2 flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5"
+              >
+                <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-400 font-medium">This file has already been downloaded</p>
+              </motion.div>
+            )}
           </motion.div>
         )}
 

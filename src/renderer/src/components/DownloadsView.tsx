@@ -2,18 +2,25 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useDownloadStore } from '../stores/useDownloadStore'
 import AddDownload from './AddDownload'
 import DownloadCard from './DownloadCard'
-import { Download, Inbox, History, Trash2 } from 'lucide-react'
+import { Download, Inbox, History, Trash2, Search } from 'lucide-react'
+import { useState } from 'react'
 
 export default function DownloadsView() {
   const downloads = useDownloadStore((s) => s.downloads)
+  const searchQuery = useDownloadStore((s) => s.searchQuery)
+  const setSearchQuery = useDownloadStore((s) => s.setSearchQuery)
+  const searchResults = useDownloadStore((s) => s.searchResults())
   const removeDownload = useDownloadStore((s) => s.removeDownload)
   const clearHistory = useDownloadStore((s) => s.clearHistory)
 
-  const activeDownloads = downloads.filter(
+  // Use search results if searching, otherwise use full list
+  const displayDownloads = searchQuery.trim() ? searchResults : downloads
+
+  const activeDownloads = displayDownloads.filter(
     (d) => d.status !== 'completed' && d.status !== 'error' && d.status !== 'cancelled'
   )
 
-  const historyDownloads = downloads.filter(
+  const historyDownloads = displayDownloads.filter(
     (d) => d.status === 'completed' || d.status === 'error' || d.status === 'cancelled'
   )
 
@@ -40,6 +47,28 @@ export default function DownloadsView() {
   return (
     <div className="flex flex-col h-full">
       <AddDownload />
+
+      {/* Search Bar */}
+      <div className="px-6 py-3 border-b border-app-border bg-app-surface/30 shrink-0">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-app-muted pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search downloads by title, URL, uploader..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-app-surface border border-app-border rounded-lg pl-10 pr-4 py-2 text-sm text-app-text outline-none focus:border-app-accent/60 transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-app-muted hover:text-app-text transition-colors"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (

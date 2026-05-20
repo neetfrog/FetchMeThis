@@ -22,6 +22,8 @@ const api = {
   // File system
   openFile: (filePath: string) => ipcRenderer.invoke('open-file', filePath),
   openFolder: (folderPath: string) => ipcRenderer.invoke('open-folder', folderPath),
+  revealFile: (filePath: string) => ipcRenderer.invoke('reveal-file', filePath),
+  copyToClipboard: (text: string) => ipcRenderer.invoke('copy-to-clipboard', text),
   chooseDirectory: () => ipcRenderer.invoke('choose-directory'),
 
   // Settings

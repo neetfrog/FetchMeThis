@@ -11,6 +11,12 @@ export interface AppSettings {
   ytdlpCustomPath: string
   ffmpegCustomPath: string
   galleryDlCustomPath: string
+  downloadSubtitles: boolean
+  extractChapters: boolean
+  enrichMetadata: boolean
+  autoOrganize: boolean
+  organizePattern: 'platform-date' | 'date-platform' | 'uploader-date' | 'none'
+  checkDuplicates: boolean
 }
 
 export const defaultSettings: AppSettings = {
@@ -21,7 +27,13 @@ export const defaultSettings: AppSettings = {
   addMetadata: true,
   ytdlpCustomPath: '',
   ffmpegCustomPath: '',
-  galleryDlCustomPath: ''
+  galleryDlCustomPath: '',
+  downloadSubtitles: false,
+  extractChapters: false,
+  enrichMetadata: false,
+  autoOrganize: false,
+  organizePattern: 'platform-date',
+  checkDuplicates: true
 }
 
 const settingsPath = join(app.getPath('userData'), 'settings.json')

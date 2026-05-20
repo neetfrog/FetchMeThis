@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { DownloadItem } from '../types'
-import { X, CheckCircle2, AlertCircle, Loader2, FolderOpen } from 'lucide-react'
+import { X, CheckCircle2, AlertCircle, Loader2, FolderOpen, Copy, Trash2, FileText, Folder } from 'lucide-react'
 import { motion } from 'framer-motion'
 import ErrorModal from './ErrorModal'
+import ContextMenu from './ContextMenu'
 
 interface DownloadCardProps {
   item: DownloadItem
@@ -18,10 +19,81 @@ function formatEta(eta?: string): string {
 
 export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }: DownloadCardProps) {
   const [showErrorModal, setShowErrorModal] = useState(false)
+  const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0 })
   const isActive = item.status === 'downloading' || item.status === 'fetching-info' || item.status === 'queued'
   const isComplete = item.status === 'completed'
   const isError = item.status === 'error'
   const isCancelled = item.status === 'cancelled'
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+    })
+  }
+
+  const handleCopyUrl = async () => {
+    await window.api.copyToClipboard(item.url)
+  }
+
+  const handleOpenFile = async () => {
+    if (item.outputPath) {
+      await window.api.openFile(item.outputPath)
+    }
+  }
+
+  const handleRevealFile = async () => {
+    if (item.outputPath) {
+      await window.api.revealFile(item.outputPath)
+    }
+  }
+
+  const getContextMenuOptions = () => {
+    const options = []
+
+    if (isComplete && item.outputPath) {
+      options.push({
+        label: 'Open file',
+        icon: <FileText size={14} />,
+        onClick: handleOpenFile,
+      })
+      options.push({
+        label: 'Show in folder',
+        icon: <FolderOpen size={14} />,
+        onClick: handleRevealFile,
+      })
+      options.push({ divider: true })
+    }
+
+    options.push({
+      label: 'Copy URL',
+      icon: <Copy size={14} />,
+      onClick: handleCopyUrl,
+    })
+
+    if (isActive) {
+      options.push({
+        label: 'Cancel',
+        icon: <X size={14} />,
+        onClick: () => onCancel(item.id),
+        className: 'text-red-400 hover:bg-red-500/10',
+      })
+    }
+
+    if (isCancelled || isError || isComplete) {
+      options.push({ divider: true })
+      options.push({
+        label: 'Remove from history',
+        icon: <Trash2 size={14} />,
+        onClick: () => onRemove(item.id),
+        className: 'text-red-400 hover:bg-red-500/10',
+      })
+    }
+
+    return options
+  }
 
   return (
     <motion.div
@@ -30,7 +102,8 @@ export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }:
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10, height: 0 }}
       transition={{ duration: 0.2 }}
-      className="flex items-start gap-3 bg-app-card border border-app-border rounded-xl p-3 group"
+      onContextMenu={handleContextMenu}
+      className="flex items-start gap-3 bg-app-card border border-app-border rounded-xl p-3 group cursor-context-menu"
     >
       {/* Thumbnail */}
       <div className="shrink-0 w-20 h-12 rounded-lg bg-app-border overflow-hidden">
@@ -169,6 +242,14 @@ export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }:
         error={item.error || 'Unknown error'}
         title={item.title}
         onClose={() => setShowErrorModal(false)}
+      />
+
+      <ContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        options={getContextMenuOptions()}
+        onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
       />
     </motion.div>
   )

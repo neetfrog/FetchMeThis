@@ -80,18 +80,26 @@ export interface DownloadRequest {
   title: string
   thumbnail?: string
   audioOnly?: boolean
-  audioFormat?: string    // 'mp3' | 'm4a' | 'opus' | 'flac'
+  audioFormat?: string
   useGalleryDl?: boolean
   ffmpegCustomPath?: string
   galleryDlCustomPath?: string
+  downloadSubtitles?: boolean
+  extractChapters?: boolean
+  enrichMetadata?: boolean
+  allowPlaylist?: boolean
+  platform?: string
 }
 
 export interface ProgressData {
   id: string
   percent: number
   speed: string
+  speedBytes?: number
   eta: string
   size: string
+  downloadedBytes?: number
+  totalBytes?: number
 }
 
 interface ActiveDownload {
@@ -348,7 +356,7 @@ class DownloadManager extends EventEmitter {
   }
 
   private async startYtDlpDownload(req: DownloadRequest): Promise<void> {
-    const { id, url, format, outputDir, audioOnly, audioFormat, ffmpegCustomPath } = req
+    const { id, url, format, outputDir, audioOnly, audioFormat, ffmpegCustomPath, downloadSubtitles, extractChapters, enrichMetadata, allowPlaylist } = req
     if (!existsSync(outputDir)) mkdirSync(outputDir, { recursive: true })
 
     const outputTemplate = join(outputDir, '%(title).100s [%(id)s].%(ext)s')
@@ -362,7 +370,7 @@ class DownloadManager extends EventEmitter {
         '--audio-format', audioFormat || 'mp3',
         '--audio-quality', '0',
         '-o', outputTemplate,
-        '--no-playlist',
+        allowPlaylist ? '--yes-playlist' : '--no-playlist',
         '--newline',
         '--no-part',
         '--no-continue',
@@ -376,7 +384,7 @@ class DownloadManager extends EventEmitter {
       args.push(
         '-f', format,
         '-o', outputTemplate,
-        '--no-playlist',
+        allowPlaylist ? '--yes-playlist' : '--no-playlist',
         '--newline',
         '--no-part',
         '--no-continue',
@@ -384,6 +392,17 @@ class DownloadManager extends EventEmitter {
         '--merge-output-format', 'mp4',
         '--no-warnings'
       )
+    }
+
+    // Add optional subtitle/chapter/metadata flags
+    if (downloadSubtitles) {
+      args.push('--write-subs', '--sub-langs', 'en,-live')
+    }
+    if (extractChapters) {
+      args.push('--split-chapters')
+    }
+    if (enrichMetadata) {
+      args.push('--embed-metadata', '--add-metadata')
     }
 
     if (ffmpegBin) {
@@ -521,7 +540,38 @@ class DownloadManager extends EventEmitter {
       /\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*(\S+)\s+at\s+(\S+)\s+ETA\s+(\S+)/
     )
     if (!match) return null
-    return { percent: parseFloat(match[1]), size: match[2], speed: match[3], eta: match[4] }
+    
+    const speedStr = match[3]
+    const speedBytes = this.parseSpeed(speedStr)
+    
+    return {
+      percent: parseFloat(match[1]),
+      size: match[2],
+      speed: speedStr,
+      speedBytes,
+      eta: match[4]
+    }
+  }
+
+  private parseSpeed(speedStr: string): number {
+    // Parse speed strings like "5.23MiB/s", "1.5MB/s", "500KiB/s", "Unknown"
+    const match = speedStr.match(/^(\d+\.?\d*)\s*([KMG]i?B)\/s$/i)
+    if (!match) return 0
+    
+    const value = parseFloat(match[1])
+    const unit = match[2].toUpperCase()
+    
+    const multipliers: Record<string, number> = {
+      'B': 1,
+      'KB': 1000,
+      'KIB': 1024,
+      'MB': 1000 * 1000,
+      'MIB': 1024 * 1024,
+      'GB': 1000 * 1000 * 1000,
+      'GIB': 1024 * 1024 * 1024
+    }
+    
+    return value * (multipliers[unit] || 1)
   }
 }
 

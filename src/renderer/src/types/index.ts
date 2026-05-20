@@ -57,6 +57,14 @@ export interface DownloadItem {
   audioOnly?: boolean
   audioFormat?: string
   useGalleryDl?: boolean
+  isPlaylist?: boolean
+  playlistSize?: number
+  playlistCompleted?: number
+  speedHistory?: number[] // bytes/sec for each update
+  downloadedBytes?: number
+  totalBytes?: number
+  uploader?: string
+  platform?: string // 'youtube', 'twitter', etc.
 }
 
 export interface AppSettings {
@@ -68,9 +76,25 @@ export interface AppSettings {
   ytdlpCustomPath: string
   ffmpegCustomPath: string
   galleryDlCustomPath: string
+  downloadSubtitles: boolean
+  extractChapters: boolean
+  enrichMetadata: boolean
+  autoOrganize: boolean
+  organizePattern: 'platform-date' | 'date-platform' | 'uploader-date' | 'none'
+  checkDuplicates: boolean
 }
 
-export type NavView = 'downloads' | 'history' | 'settings' | 'logs'
+export interface DownloadStats {
+  totalDownloadedGB: number
+  totalDownloads: number
+  completedDownloads: number
+  failedDownloads: number
+  totalDownloadTime: number // milliseconds
+  averageSpeed: number // bytes/sec
+  platformStats: Record<string, { count: number; totalGB: number }>
+}
+
+export type NavView = 'downloads' | 'settings' | 'logs' | 'stats'
 
 export const FORMAT_PRESETS: { label: string; value: string; description: string }[] = [
   {
