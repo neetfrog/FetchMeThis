@@ -94,7 +94,8 @@ export default function SettingsView() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="max-w-xl space-y-6">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
+          <div className="lg:col-span-2 space-y-6">
 
           {/* Download Location */}
           <section>
@@ -153,16 +154,20 @@ export default function SettingsView() {
             </div>
           </section>
 
-          {/* Quality */}
-          <section>
-            <h3 className="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3">
-              Quality
-            </h3>
-            <div className="bg-app-card border border-app-border rounded-xl p-4">
-              <label className="block text-sm font-medium text-app-text mb-2">
-                Default format
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+          </div>
+
+          {/* Quality & Output in 2-column grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 space-y-6 lg:space-y-0">
+            {/* Quality */}
+            <section>
+              <h3 className="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3">
+                Quality
+              </h3>
+              <div className="bg-app-card border border-app-border rounded-xl p-4">
+                <label className="block text-sm font-medium text-app-text mb-2">
+                  Default format
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {FORMAT_PRESETS.map((preset) => (
                   <button
                     key={preset.value}
@@ -181,28 +186,29 @@ export default function SettingsView() {
             </div>
           </section>
 
-          {/* Metadata */}
-          <section>
-            <h3 className="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3">
-              Output
-            </h3>
-            <div className="bg-app-card border border-app-border rounded-xl overflow-hidden divide-y divide-app-border">
-              <ToggleRow
-                label="Embed thumbnail"
-                description="Add video thumbnail as cover art"
-                value={settings.embedThumbnail}
-                onChange={(v) => update({ embedThumbnail: v })}
-              />
-              <ToggleRow
-                label="Add metadata"
-                description="Embed title, artist, and other metadata"
-                value={settings.addMetadata}
-                onChange={(v) => update({ addMetadata: v })}
-              />
-            </div>
-          </section>
+            {/* Metadata/Output */}
+            <section>
+              <h3 className="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3">
+                Output
+              </h3>
+              <div className="bg-app-card border border-app-border rounded-xl overflow-hidden divide-y divide-app-border">
+                <ToggleRow
+                  label="Embed thumbnail"
+                  description="Add video thumbnail as cover art"
+                  value={settings.embedThumbnail}
+                  onChange={(v) => update({ embedThumbnail: v })}
+                />
+                <ToggleRow
+                  label="Add metadata"
+                  description="Embed title, artist, and other metadata"
+                  value={settings.addMetadata}
+                  onChange={(v) => update({ addMetadata: v })}
+                />
+              </div>
+            </section>
+          </div>
 
-          {/* Tools */}
+          {/* Tools - full width */}
           <section>
             <h3 className="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3 flex items-center gap-2">
               <Wrench size={12} />
@@ -343,7 +349,6 @@ export default function SettingsView() {
 
             </div>
           </section>
-
         </div>
       </div>
 
