@@ -11,7 +11,7 @@ export default function TitleBar() {
   return (
     <div className="drag-region flex items-center h-10 bg-app-surface border-b border-app-border shrink-0 z-50">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-4 w-[220px] shrink-0">
+      <div className="flex items-center gap-2 px-4 shrink-0">
         <div className="w-6 h-6 bg-app-accent rounded-md flex items-center justify-center shrink-0">
           <Download size={13} className="text-white" />
         </div>

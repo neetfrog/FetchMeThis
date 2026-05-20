@@ -365,6 +365,8 @@ class DownloadManager extends EventEmitter {
         '--no-playlist',
         '--newline',
         '--no-part',
+        '--no-continue',
+        '--no-overwrites',
         '--no-warnings'
       )
       if (ffmpegBin) {
@@ -377,6 +379,8 @@ class DownloadManager extends EventEmitter {
         '--no-playlist',
         '--newline',
         '--no-part',
+        '--no-continue',
+        '--no-overwrites',
         '--merge-output-format', 'mp4',
         '--no-warnings'
       )
@@ -391,6 +395,7 @@ class DownloadManager extends EventEmitter {
     this.activeDownloads.set(id, active)
 
     let stdoutBuffer = ''
+    let fileAlreadyExists = false
     const handleStdout = (chunk: Buffer) => {
       if (active.aborted) return
       stdoutBuffer += chunk.toString()
@@ -399,6 +404,10 @@ class DownloadManager extends EventEmitter {
       for (const line of lines) {
         if (!line.trim()) continue
         this.emitDownloadLog(id, 'yt-dlp', line)
+        // Detect if file already exists
+        if (line.includes('has already been downloaded') || line.includes('[download] Skipping')) {
+          fileAlreadyExists = true
+        }
         const progress = this.parseYtDlpProgress(line)
         if (progress) this.emit('progress', { id, ...progress })
       }
@@ -427,8 +436,15 @@ class DownloadManager extends EventEmitter {
     proc.on('close', (code) => {
       this.activeDownloads.delete(id)
       if (!active.aborted) {
-        if (code === 0) this.emit('complete', { id })
-        else this.emit('error', { id, error: `yt-dlp exited with code ${code}` })
+        if (code === 0) {
+          if (fileAlreadyExists) {
+            this.emit('error', { id, error: 'This file has already been downloaded. Skipping to avoid overwrite.' })
+          } else {
+            this.emit('complete', { id })
+          }
+        } else {
+          this.emit('error', { id, error: `yt-dlp exited with code ${code}` })
+        }
       }
     })
   }

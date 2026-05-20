@@ -17,7 +17,7 @@ export const defaultSettings: AppSettings = {
   downloadPath: join(app.getPath('downloads'), 'FetchMeThis'),
   maxConcurrentDownloads: 3,
   defaultFormat: 'bestvideo+bestaudio/best',
-  embedThumbnail: false,
+  embedThumbnail: true,
   addMetadata: true,
   ytdlpCustomPath: '',
   ffmpegCustomPath: '',

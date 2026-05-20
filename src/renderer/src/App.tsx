@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import TitleBar from './components/TitleBar'
-import Sidebar from './components/Sidebar'
+import BottomNav from './components/BottomNav'
 import DownloadsView from './components/DownloadsView'
-import HistoryView from './components/HistoryView'
 import SettingsView from './components/SettingsView'
 import SetupScreen from './components/SetupScreen'
 import LogsView from './components/LogsView'
@@ -18,15 +17,19 @@ interface LogEntry {
 
 export default function App() {
   const [activeView, setActiveView] = useState<NavView>('downloads')
-  const [ytdlpReady, setYtdlpReady] = useState<boolean | null>(null)
+  const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const { updateDownload } = useDownloadStore()
 
-  // Check if yt-dlp is installed on startup
+  // Check if required tools are installed on startup
   useEffect(() => {
-    window.api.checkYtDlp().then((res: any) => {
-      setYtdlpReady(res.installed)
-    })
+    const checkTools = async () => {
+      const ytdlpRes = await window.api.checkYtDlp()
+      // Setup is required if yt-dlp (required tool) is not installed
+      setSetupRequired(!ytdlpRes.installed)
+    }
+    
+    checkTools()
   }, [])
 
   // Wire up download event listeners
@@ -116,7 +119,7 @@ export default function App() {
     }
   }, [updateDownload])
 
-  if (ytdlpReady === null) {
+  if (setupRequired === null) {
     return (
       <div className="flex h-screen bg-app-bg items-center justify-center">
         <div className="w-6 h-6 border-2 border-app-accent border-t-transparent rounded-full animate-spin" />
@@ -124,11 +127,11 @@ export default function App() {
     )
   }
 
-  if (!ytdlpReady) {
+  if (setupRequired) {
     return (
       <div className="flex flex-col h-screen bg-app-bg text-app-text">
         <TitleBar />
-        <SetupScreen onComplete={() => setYtdlpReady(true)} />
+        <SetupScreen onComplete={() => setSetupRequired(false)} />
       </div>
     )
   }
@@ -136,15 +139,12 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-app-bg text-app-text">
       <TitleBar />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar activeView={activeView} onNavigate={setActiveView} />
-        <main className="flex-1 overflow-hidden">
-          {activeView === 'downloads' && <DownloadsView />}
-          {activeView === 'history' && <HistoryView />}
-          {activeView === 'logs' && <LogsView logs={logs} onClear={() => setLogs([])} />}
-          {activeView === 'settings' && <SettingsView />}
-        </main>
-      </div>
+      <main className="flex-1 overflow-hidden">
+        {activeView === 'downloads' && <DownloadsView />}
+        {activeView === 'logs' && <LogsView logs={logs} onClear={() => setLogs([])} />}
+        {activeView === 'settings' && <SettingsView />}
+      </main>
+      <BottomNav activeView={activeView} onNavigate={setActiveView} />
     </div>
   )
 }

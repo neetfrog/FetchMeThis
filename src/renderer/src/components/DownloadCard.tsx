@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { DownloadItem } from '../types'
 import { X, CheckCircle2, AlertCircle, Loader2, FolderOpen } from 'lucide-react'
 import { motion } from 'framer-motion'
+import ErrorModal from './ErrorModal'
 
 interface DownloadCardProps {
   item: DownloadItem
@@ -15,15 +17,11 @@ function formatEta(eta?: string): string {
 }
 
 export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }: DownloadCardProps) {
+  const [showErrorModal, setShowErrorModal] = useState(false)
   const isActive = item.status === 'downloading' || item.status === 'fetching-info' || item.status === 'queued'
   const isComplete = item.status === 'completed'
   const isError = item.status === 'error'
   const isCancelled = item.status === 'cancelled'
-
-  const progressColor =
-    isError ? 'bg-red-500' :
-    isComplete ? 'bg-app-success' :
-    'bg-app-accent'
 
   return (
     <motion.div
@@ -60,12 +58,12 @@ export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }:
           </p>
 
           {/* Status icon */}
-          <div className="shrink-0 mt-0.5">
+          <div className="shrink-0 flex items-center justify-center w-4 h-4">
             {isActive && item.status !== 'fetching-info' && (
               <div className="w-4 h-4 rounded-full border-2 border-app-accent border-t-transparent animate-spin" />
             )}
             {item.status === 'fetching-info' && (
-              <Loader2 size={14} className="text-app-muted animate-spin" />
+              <Loader2 size={16} className="text-app-muted animate-spin" />
             )}
             {isComplete && <CheckCircle2 size={16} className="text-app-success" />}
             {isError && <AlertCircle size={16} className="text-red-400" />}
@@ -74,7 +72,7 @@ export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }:
         </div>
 
         {/* Meta row */}
-        <div className="flex items-center gap-2 mt-0.5 mb-2">
+        <div className="flex items-center gap-2 mt-0.5">
           <span className="text-[11px] text-app-muted">{item.formatLabel}</span>
           {item.extractor && (
             <span className="text-[10px] text-app-accent/70 bg-app-accent/10 px-1.5 py-0.5 rounded-full">
@@ -103,7 +101,11 @@ export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }:
             <span className="text-[11px] text-app-success/80">{item.size}</span>
           )}
           {isError && (
-            <span className="text-[11px] text-red-400/80 truncate max-w-[300px]">
+            <span
+              onClick={() => setShowErrorModal(true)}
+              className="text-[11px] text-red-400/80 break-words cursor-pointer hover:text-red-400 transition-colors"
+              title="Click to see full error"
+            >
               {item.error}
             </span>
           )}
@@ -113,26 +115,22 @@ export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }:
         </div>
 
         {/* Progress bar */}
-        {(isActive || isComplete) && (
-          <div className="w-full h-1 bg-app-border rounded-full overflow-hidden">
-            {item.progress === -1 ? (
-              <div className="h-full w-full rounded-full bg-app-accent animate-pulse" />
-            ) : (
-              <div
-                className={`h-full rounded-full transition-all duration-300 relative ${progressColor} ${
-                  isActive ? 'progress-shine' : ''
-                }`}
-                style={{ width: `${isComplete ? 100 : item.progress}%` }}
-              />
-            )}
-          </div>
-        )}
-
-        {isError && (
-          <div className="w-full h-1 bg-red-500/20 rounded-full overflow-hidden">
-            <div className="h-full bg-red-500/50 rounded-full" style={{ width: '100%' }} />
-          </div>
-        )}
+        <div className="w-full h-1 bg-app-border rounded-full overflow-hidden mt-2">
+          {isActive && item.progress === -1 ? (
+            <div className="h-full w-full rounded-full bg-app-accent animate-pulse" />
+          ) : isActive ? (
+            <div
+              className="h-full rounded-full transition-all duration-300 relative bg-app-accent progress-shine"
+              style={{ width: `${item.progress}%` }}
+            />
+          ) : isComplete ? (
+            <div className="h-full w-full rounded-full bg-app-success" />
+          ) : isError ? (
+            <div className="h-full w-full rounded-full bg-red-500/50" />
+          ) : (
+            <div className="h-full rounded-full bg-app-accent/50" />
+          )}
+        </div>
       </div>
 
       {/* Actions */}
@@ -165,6 +163,13 @@ export default function DownloadCard({ item, onCancel, onRemove, onOpenFolder }:
           </button>
         )}
       </div>
+
+      <ErrorModal
+        isOpen={showErrorModal}
+        error={item.error || 'Unknown error'}
+        title={item.title}
+        onClose={() => setShowErrorModal(false)}
+      />
     </motion.div>
   )
 }
